@@ -1,56 +1,58 @@
-Summary:	Registry server for Docker
+Summary:	Docker Registry 2.0
 Name:		docker-registry
-Version:	0.9.1
+Version:	2.4.0
 Release:	0.1
 License:	Apache v2.0
 Group:		Networking/Daemons
-Source0:	https://github.com/docker/docker-registry/archive/%{version}/%{name}-%{version}.tar.gz
-# Source0-md5:	ec1e5dc5ae9bbea8cecd4d763c84bf74
-URL:		https://github.com/docker/docker-registry
+Source0:	https://github.com/docker/distribution/archive/v%{version}/%{name}-%{version}.tar.gz
+# Source0-md5:	ef3d00ecde1350caed2716b185d86660
+URL:		https://github.com/docker/distribution
 Source1:	%{name}.service
 Source2:	%{name}.sysconfig
 Source3:	%{name}.sysvinit
-BuildRequires:	python-devel
-BuildRequires:	rpm-pythonprov
+BuildRequires:	golang >= 1.5
 BuildRequires:	rpmbuild(macros) >= 1.714
-BuildRequires:	systemd
+%if 0
+BuildRequires:	systemd-devel
 Requires(post):	systemd
 Requires(preun):	systemd
 Requires(postun):	systemd
 Requires(post):	/sbin/chkconfig
 Requires(preun):	/sbin/chkconfig
 Requires(postun):	rc-scripts
-Requires:	python-M2Crypto
-Requires:	python-PyYAML >= 3.11
-Requires:	python-SQLAlchemy >= 0.9.4
-Requires:	python-backports-lzma
-Requires:	python-blinker >= 1.3
-Requires:	python-docker-registry-core >= 2.0.2-1
-Requires:	python-flask >= 0.10.1
-Requires:	python-gevent >= 1.0.1
-Requires:	python-gunicorn >= 19.1.1
-Requires:	python-importlib
-Requires:	python-requests >= 2.3.0
-BuildArch:	noarch
+%endif
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
+
+# go stuff
+%define _enable_debug_packages 0
+%define gobuild(o:) go build -ldflags "${LDFLAGS:-} -B 0x$(head -c20 /dev/urandom|od -An -tx1|tr -d ' \\n')" -a -v -x %{?**};
 
 %description
 Registry server for Docker (hosting/delivering of repositories and
 images).
 
 %prep
-%setup -q
-
-# Remove the golang implementation
-# It's not the main one (yet?)
-rm -r contrib/golang_impl
-find -name "*.py" -print | xargs sed -i '/flask_cors/d'
+%setup -qc
+mv distribution-%{version}/* .
+cp -p cmd/registry/config-dev.yml config.yml
 
 %build
-%py_build
+export GOPATH=$(pwd)/go
+install -d $GOPATH
+mkdir -p $GOPATH/src/github.com/docker
+ln -snf ../../../.. $GOPATH/src/github.com/docker/distribution
+
+%{__make} binaries \
+	VERSION=%{version} \
+	DOCKER_BUILDTAGS="include_oss include_gcs"
 
 %install
 rm -rf $RPM_BUILD_ROOT
+install -d $RPM_BUILD_ROOT{%{_sysconfdir},%{_bindir}}
+install -p bin/* $RPM_BUILD_ROOT%{_bindir}
+cp -p config.yml $RPM_BUILD_ROOT%{_sysconfdir}/%{name}.yml
+
+%if 0
 install -d $RPM_BUILD_ROOT/etc/{rc.d/init.d,sysconfig} \
 	$RPM_BUILD_ROOT%{py_sitescriptdir}/%{name} \
 	$RPM_BUILD_ROOT%{systemdunitdir} \
@@ -66,12 +68,12 @@ sed -i "s|#WORKDIR#|%{py_sitescriptdir}/%{name}|" $RPM_BUILD_ROOT%{systemdunitdi
 sed -i "s|#WORKDIR#|%{py_sitescriptdir}/%{name}|" $RPM_BUILD_ROOT/etc/rc.d/init.d/%{name}
 
 cp -a docker_registry tests $RPM_BUILD_ROOT%{py_sitescriptdir}/%{name}
-cp config/config_sample.yml $RPM_BUILD_ROOT%{_sysconfdir}/%{name}.yml
-sed -i 's/\/tmp\/registry/\/var\/lib\/docker-registry/g' $RPM_BUILD_ROOT%{_sysconfdir}/%{name}.yml
+%endif
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
+%if 0
 %post
 /sbin/chkconfig --add %{name}
 %systemd_post %{name}.service
@@ -88,10 +90,22 @@ if [ "$1" -ge "1" ] ; then
 	%service %{name} condrestart
 fi
 %systemd_reload
+%endif
 
 %files
 %defattr(644,root,root,755)
-%doc AUTHORS CHANGELOG.md LICENSE README.md
+%doc AUTHORS README.md ROADMAP.md
+%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/%{name}.yml
+%attr(755,root,root) %{_bindir}/digest
+%attr(755,root,root) %{_bindir}/registry
+%attr(755,root,root) %{_bindir}/registry-api-descriptor-template
+%if 0
+%config(noreplace) %verify(not md5 mtime size) /etc/sysconfig/%{name}
+%attr(754,root,root) /etc/rc.d/init.d/%{name}
+%dir %{py_sitescriptdir}/%{name}
+%{py_sitescriptdir}/%{name}/*
+%dir %{_sharedstatedir}/%{name}
+%{systemdunitdir}/%{name}.service
 %config(noreplace) %verify(not md5 mtime size) /etc/sysconfig/%{name}
 %config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/%{name}.yml
 %attr(754,root,root) /etc/rc.d/init.d/%{name}
@@ -99,3 +113,4 @@ fi
 %{py_sitescriptdir}/%{name}/*
 %dir %{_sharedstatedir}/%{name}
 %{systemdunitdir}/%{name}.service
+%endif
