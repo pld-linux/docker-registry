@@ -1,11 +1,11 @@
 Summary:	Docker Registry 2.0
 Name:		docker-registry
-Version:	2.4.0
+Version:	2.4.1
 Release:	0.1
 License:	Apache v2.0
 Group:		Networking/Daemons
 Source0:	https://github.com/docker/distribution/archive/v%{version}/%{name}-%{version}.tar.gz
-# Source0-md5:	ef3d00ecde1350caed2716b185d86660
+# Source0-md5:	6df6880673111397737b37e06c20e979
 URL:		https://github.com/docker/distribution
 Source1:	%{name}.service
 Source2:	%{name}.sysconfig
