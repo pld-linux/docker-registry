@@ -48,9 +48,9 @@ ln -snf ../../../.. $GOPATH/src/github.com/docker/distribution
 
 %install
 rm -rf $RPM_BUILD_ROOT
-install -d $RPM_BUILD_ROOT{%{_sysconfdir},%{_bindir}}
+install -d $RPM_BUILD_ROOT{%{_sysconfdir}/docker/registry,%{_bindir}}
 install -p bin/* $RPM_BUILD_ROOT%{_bindir}
-cp -p config.yml $RPM_BUILD_ROOT%{_sysconfdir}/%{name}.yml
+cp -p config.yml $RPM_BUILD_ROOT%{_sysconfdir}/docker/registry/config.yml
 
 %if 0
 install -d $RPM_BUILD_ROOT/etc/{rc.d/init.d,sysconfig} \
@@ -95,10 +95,13 @@ fi
 %files
 %defattr(644,root,root,755)
 %doc AUTHORS README.md ROADMAP.md
-%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/%{name}.yml
+%dir %{_sysconfdir}/docker
+%dir %{_sysconfdir}/docker/registry
+%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/docker/registry/config.yml
 %attr(755,root,root) %{_bindir}/digest
 %attr(755,root,root) %{_bindir}/registry
 %attr(755,root,root) %{_bindir}/registry-api-descriptor-template
+
 %if 0
 %config(noreplace) %verify(not md5 mtime size) /etc/sysconfig/%{name}
 %attr(754,root,root) /etc/rc.d/init.d/%{name}
