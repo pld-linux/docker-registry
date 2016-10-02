@@ -1,11 +1,11 @@
 Summary:	Docker Registry 2.0
 Name:		docker-registry
-Version:	2.4.1
-Release:	1
+Version:	2.5.1
+Release:	0.1
 License:	Apache v2.0
 Group:		Networking/Daemons
 Source0:	https://github.com/docker/distribution/archive/v%{version}/%{name}-%{version}.tar.gz
-# Source0-md5:	6df6880673111397737b37e06c20e979
+# Source0-md5:	97f16e2b738b1953c5b62a2275f967be
 URL:		https://github.com/docker/distribution
 Source1:	%{name}.service
 Source2:	%{name}.sysconfig
@@ -26,6 +26,7 @@ BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 # go stuff
 %define _enable_debug_packages 0
 %define gobuild(o:) go build -ldflags "${LDFLAGS:-} -B 0x$(head -c20 /dev/urandom|od -An -tx1|tr -d ' \\n')" -a -v -x %{?**};
+%define import_path	github.com/docker/distribution
 
 %description
 Registry server for Docker (hosting/delivering of repositories and
@@ -36,11 +37,11 @@ images).
 mv distribution-%{version}/* .
 cp -p cmd/registry/config-dev.yml config.yml
 
+install -d src/$(dirname %{import_path})
+ln -s ../../.. src/%{import_path}
+
 %build
-export GOPATH=$(pwd)/go
-install -d $GOPATH
-mkdir -p $GOPATH/src/github.com/docker
-ln -snf ../../../.. $GOPATH/src/github.com/docker/distribution
+export GOPATH=$(pwd)
 
 %{__make} binaries \
 	VERSION=%{version} \
