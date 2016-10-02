@@ -34,24 +34,32 @@ images).
 
 %prep
 %setup -qc
-mv distribution-%{version}/* .
-cp -p cmd/registry/config-dev.yml config.yml
 
+# go wants specific directory structure
+# otherwise version override via ldflags does not work
 install -d src/$(dirname %{import_path})
-ln -s ../../.. src/%{import_path}
+mv distribution-%{version}/{AUTHORS,*.md} .
+mv distribution-%{version} src/%{import_path}
 
 %build
 export GOPATH=$(pwd)
+cd src/%{import_path}
 
 %{__make} binaries \
-	VERSION=%{version} \
+	VERSION=v%{version} \
 	DOCKER_BUILDTAGS="include_oss include_gcs"
+
+v=$(./bin/registry --version)
+v=$(echo "$v" | awk '{print $NF}')
+test "$v" = "v%{version}"
 
 %install
 rm -rf $RPM_BUILD_ROOT
 install -d $RPM_BUILD_ROOT{%{_sysconfdir}/docker/registry,%{_bindir}}
+
+cd src/%{import_path}
 install -p bin/* $RPM_BUILD_ROOT%{_bindir}
-cp -p config.yml $RPM_BUILD_ROOT%{_sysconfdir}/docker/registry/config.yml
+cp -p cmd/registry/config-dev.yml $RPM_BUILD_ROOT%{_sysconfdir}/docker/registry/config.yml
 
 %if 0
 install -d $RPM_BUILD_ROOT/etc/{rc.d/init.d,sysconfig} \
